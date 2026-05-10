@@ -1,5 +1,5 @@
 import { type Page, type Locator } from '@playwright/test';
-import { BasePage } from './BasePage';
+import { BasePage } from './base.page';
 
 /**
  * HomePage - Page Object for the nopCommerce demo homepage.
@@ -27,6 +27,11 @@ export class HomePage extends BasePage {
   readonly productPrices: Locator;
   readonly addToCartButtons: Locator;
 
+  // Child selectors for scoping within a product item
+  readonly productTitleSelector = '.product-title a';
+  readonly productPriceSelector = '.actual-price';
+  readonly addToCartBtnSelector = 'button.product-box-add-to-cart-button';
+
   // Footer
   readonly footerLinks: Locator;
 
@@ -46,9 +51,9 @@ export class HomePage extends BasePage {
     // Featured products
     this.featuredProductsHeading = page.locator('.home-page-product-grid .title strong');
     this.productItems = page.locator('.product-item');
-    this.productTitles = page.locator('.product-item .product-title a');
-    this.productPrices = page.locator('.product-item .actual-price');
-    this.addToCartButtons = page.locator('button.product-box-add-to-cart-button');
+    this.productTitles = this.productItems.locator(this.productTitleSelector);
+    this.productPrices = this.productItems.locator(this.productPriceSelector);
+    this.addToCartButtons = this.productItems.locator(this.addToCartBtnSelector);
 
     // Footer
     this.footerLinks = page.locator('.footer-block a');
@@ -59,6 +64,11 @@ export class HomePage extends BasePage {
   /** Open the homepage */
   async open() {
     await this.navigate('/');
+  }
+
+  /** Wait for the featured products section to load */
+  async waitForFeaturedProducts() {
+    await this.productItems.first().waitFor({ state: 'visible', timeout: 60000 });
   }
 
   /** Search for a product using the header search bar */
@@ -114,9 +124,9 @@ export class HomePage extends BasePage {
 
     for (let i = 0; i < count; i++) {
       const card = this.productItems.nth(i);
-      const name = (await card.locator('.product-title a').textContent()) ?? '';
-      const price = (await card.locator('.actual-price').textContent()) ?? '';
-      const addToCartBtn = card.locator('button.product-box-add-to-cart-button');
+      const name = (await card.locator(this.productTitleSelector).textContent()) ?? '';
+      const price = (await card.locator(this.productPriceSelector).textContent()) ?? '';
+      const addToCartBtn = card.locator(this.addToCartBtnSelector);
       const hasAddToCart = (await addToCartBtn.count()) > 0;
 
       products.push({
@@ -132,9 +142,9 @@ export class HomePage extends BasePage {
   /** Click the "ADD TO CART" button for a product by its name */
   async addProductToCart(productName: string) {
     const productCard = this.productItems.filter({
-      has: this.page.locator('.product-title a', { hasText: productName }),
+      has: this.page.locator(this.productTitleSelector, { hasText: productName }),
     });
-    const addBtn = productCard.locator('button.product-box-add-to-cart-button');
+    const addBtn = productCard.locator(this.addToCartBtnSelector);
     await this.clickElement(addBtn, true);
   }
 }
